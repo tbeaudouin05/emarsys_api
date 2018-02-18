@@ -3,8 +3,10 @@ emarsys_cluster_id.Rproj
 main.R
 .Rproj.user/
 .RData
-temp/
+nodejs/temp/
 R/.Rhistory
+R/R_log.txt
 nodejs_log.txt
 access.yaml
 R_log.txt
+nodejs/config.json
