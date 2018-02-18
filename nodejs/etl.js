@@ -6,11 +6,10 @@ const crypto = require('crypto');
 const iso8601 = require('iso8601');
 const request = require('request');
 const timestamp = require('console-timestamp');
-const promiseRetry = require('promise-retry');
 
 const user = 'bamilo_predict';
 const secret = 'OCoruZGR4S4uPEZF0L16';
-const json_to_feed = JSON.parse(fs.readFileSync('C:/Projects/Marketing/Emarsys_cluster_id/temp/json_to_feed.txt', 'utf8'));
+const json_to_feed = JSON.parse(fs.readFileSync('C:/Projects/Marketing/emarsys_api/temp/json_to_feed.txt', 'utf8'));
 
 function getWsseHeader(user, secret) {
   let nonce = crypto.randomBytes(16).toString('hex');
@@ -50,14 +49,19 @@ request.put({
     console.log('API upload result time (1 second before json_to_feed.txt deletion time):');
     console.log('DD-MM-YY hh:mm:ss'.timestamp);
 
-// delete file named 'sample.txt'
-fs.unlinkSync('C:/Projects/Marketing/Emarsys_cluster_id/temp/json_to_feed.txt', function (err) {
-  if (err) throw err;
+// delete file named 'json_to_feed.txt'
+fs.unlink('C:/Projects/Marketing/emarsys_api/temp/json_to_feed.txt', function (err) {
+    if (err) {
+      console.log('Error deleting json_to_feed.txt: ',err);
+      console.log('DD-MM-YY hh:mm:ss'.timestamp);
+    } else {
+      console.log('json_to_feed deletion time:');
+      console.log('DD-MM-YY hh:mm:ss'.timestamp);
+      console.log('json_to_feed deletion status: successful!');
+    }
+  }); 
 
-}); 
 
-// if no error, file has been deleted successfully
-console.log('File deleted!');  
   }
 }
 );
