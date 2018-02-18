@@ -1,0 +1,23 @@
+LINK FOLDER TO GITHUB REPOSITORY
+
+echo "# booking_app" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git remote add origin https://github.com/tbeaudouin05/booking_app.git
+git push -u origin master
+
+------------------------------
+
+always FIRST define gitignore AND commit + push it before pushing anything else or you might push unwanted files
+------------------------------
+
+rm .git/index.lock : solve "another process is running" bullshit
+git rm -r folder_path : remove folder from git
+git add file_name.extension : all file_name to commit
+git add -u : add all files in folder(s) to commit = TRACK ALL FILES EXCEPT GITIGNORE
+git status: check what will be committed
+git commit -a : only commit modified and deleted files
+git commit -m "commit_name": commit all
+git push origin master : push commit to GitHub
+

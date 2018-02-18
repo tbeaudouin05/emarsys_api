@@ -4,6 +4,6 @@ main.R
 .Rproj.user/
 .RData
 temp/
-R/
+R/.Rhistory
 nodejs_log.txt
 access.yaml

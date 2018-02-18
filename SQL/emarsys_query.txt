@@ -1,0 +1,510 @@
+SELECT 
+  g_il.customer_id AS '4819' 
+  ,lci.cluster_id  AS '18124' 
+  ,CAST(GETDATE() AS DATE) AS '18125' 
+  ,g_il.avg_item_price AS '18126' 
+  ,g_il.avg_basket_size AS '18130' 
+  ,CAST(lcdr.last_cancel_date AS DATE) AS '18138' 
+  ,lcdr.last_cancel_reason AS '18129' 
+  ,CAST(lbcrd.last_bad_cancel_date AS DATE) AS '18131' 
+  ,lbcrd.last_bad_cancel_reason AS '18132' 
+  ,CAST(lrdr.last_return_date AS DATE) AS '18135' 
+  ,lrdr.last_return_reason AS '18134' 
+  ,CAST(lbrdr.last_bad_return_date AS DATE) AS '18136' 
+  ,lbrdr.last_bad_return_reason AS '18137' 
+  ,CAST(g_il.last_refund_reject_date AS DATE) AS '18139' 
+  ,NULL AS '18140' 
+  ,los.last_order_status AS '18141' 
+  ,CAST(g_il.last_voucher_date AS DATE) AS '18142' 
+  ,NULL AS '18143'
+  ,CAST(g_il.last_cart_rule_date AS DATE) AS '18144'
+  ,g_il.refund_reject_ratio AS '18145' 
+  ,g_il.order_voucher_ratio AS '18146' 
+  ,g_il.order_cart_rule_ratio AS '18147' 
+  ,NULL AS '18148' 
+  ,CAST(g_il.last_ship_broken_sla_date AS DATE) AS '18149' 
+  ,CAST(g_il.last_refund_broken_sla_date AS DATE) AS '18152' 
+  ,g_il.bad_cancellation_ratio AS '18151' 
+  ,g_il.bad_return_ratio AS '18153'
+  ,g_il.ship_broken_sla_ratio AS '18154' 
+  ,g_il.refund_broken_sla_ratio AS '18155' 
+  ,hod.hour_of_day_most_order AS '18156' 
+  ,CAST(hod.order_count_hod_most_order AS DECIMAL(14,2)) / g_il.order_count AS '18157' 
+  ,dow.day_of_week_most_order AS '18158' 
+  ,CAST(dow.order_count_dow_most_order  AS DECIMAL(14,2)) / g_il.order_count AS '18159' 
+  ,dom.day_of_month_most_order AS '18160'
+  ,CAST(dom.order_count_dom_most_order AS DECIMAL(14,2)) / g_il.order_count AS '18161' 
+  ,moy.month_of_year_most_order AS '18162' 
+  ,CAST(moy.order_count_moy_most_order AS DECIMAL(14,2)) / g_il.order_count AS '18163' 
+
+  
+  FROM
+
+(
+
+
+SELECT  
+   il.customer_id AS 'customer_id'
+  ,SUM(il.unit_price) / COUNT(ALL il.id_sales_order_item) AS 'avg_item_price'
+  ,COUNT(ALL il.id_sales_order_item) / COUNT(DISTINCT il.order_nr) AS 'avg_basket_size'
+  ,MAX(il.refund_reject_at) AS  'last_refund_reject_date'
+  ,MAX(CASE WHEN il.coupon_money_value = 0 THEN NULL ELSE il.created_at END) AS 'last_voucher_date'
+  ,MAX(CASE WHEN il.cart_rule_discount = 0 THEN NULL ELSE il.created_at END) AS 'last_cart_rule_date'
+  ,CAST(COUNT(ALL il.canceled_at) AS DECIMAL(7,1))/COUNT(ALL il.id_sales_order_item) AS 'cancel_ratio'
+  ,CAST(COUNT(ALL il.returned_at) AS DECIMAL(7,1))/COUNT(ALL il.id_sales_order_item) AS 'return_ratio'
+  ,CAST(COUNT(ALL il.refund_reject_at) AS DECIMAL(7,1))/COUNT(ALL il.id_sales_order_item) AS 'refund_reject_ratio'
+  ,CAST(COUNT(DISTINCT CASE WHEN il.coupon_money_value = 0 THEN NULL ELSE il.order_nr END) AS DECIMAL(7,1))/COUNT(DISTINCT il.order_nr) AS 'order_voucher_ratio'
+  ,CAST(COUNT(DISTINCT CASE WHEN il.cart_rule_discount = 0 THEN NULL ELSE il.order_nr END) AS DECIMAL(7,1))/COUNT(DISTINCT il.order_nr) AS 'order_cart_rule_ratio'
+  ,NULL AS 'main_voucher_type'
+  ,MAX(CASE WHEN il.is_ship_broken_sla = 1 THEN DATEADD(day,3,il.created_at)
+            ELSE NULL END) AS 'last_ship_broken_sla_date'
+  ,MAX(CASE WHEN il.is_refund_broken_sla = 1 THEN DATEADD(day,7,il.ready_for_refund_at)
+            ELSE NULL END) AS 'last_refund_broken_sla_date'
+  ,CAST(COUNT(CASE WHEN il.is_bad_cancel_reason = 1 THEN il.id_sales_order_item ELSE NULL END) AS DECIMAL(7,1)) / COUNT(il.id_sales_order_item) AS 'bad_cancellation_ratio'
+  ,CAST(COUNT(CASE WHEN il.is_bad_return_reason = 1 THEN il.id_sales_order_item ELSE NULL END) AS DECIMAL(7,1)) / COUNT(il.id_sales_order_item) AS 'bad_return_ratio'
+  ,CAST(COUNT(CASE WHEN il.is_ship_broken_sla = 1 THEN il.id_sales_order_item ELSE NULL END) AS DECIMAL(7,1)) / COUNT(il.id_sales_order_item) AS 'ship_broken_sla_ratio'
+  ,CAST(COUNT(CASE WHEN il.is_refund_broken_sla = 1 THEN il.id_sales_order_item ELSE NULL END) AS DECIMAL(7,1)) / COUNT(il.id_sales_order_item) AS 'refund_broken_sla_ratio'
+  ,COUNT(DISTINCT il.order_nr) AS  'order_count'
+
+ FROM
+
+(SELECT 
+
+  si.id_sales_order_item
+  ,so.customer_id
+  ,so.status
+  ,si.ready_for_refund_at
+  ,si.shipped_at
+  ,si.canceled_at
+  ,si.returned_at
+  ,si.created_at
+  ,so.order_nr
+  ,si.unit_price
+  ,si.coupon_money_value
+  ,si.cart_rule_discount
+  ,si.refund_reject_at
+
+  ,CASE WHEN DATEDIFF(HOUR,si.created_at,GETDATE()) / 24 > 3 AND si.shipped_at IS NULL THEN 1
+        WHEN DATEDIFF(HOUR, si.created_at, si.shipped_at)/24 > 3 THEN 1
+        ELSE NULL END AS 'is_ship_broken_sla'
+
+  ,CASE WHEN DATEDIFF(HOUR, si.ready_for_refund_at, GETDATE())/24 > 7 AND si.refund_completed_at IS NULL THEN 1
+            WHEN DATEDIFF(HOUR, si.ready_for_refund_at, si.refund_completed_at)/24 > 7 THEN 1
+            ELSE NULL END AS 'is_refund_broken_sla'
+
+  ,CASE WHEN si.return_reason ='content issue' THEN 1
+        WHEN si.return_reason ='Damaged item' THEN 1
+        WHEN si.return_reason ='Expiring date' THEN 1
+        WHEN si.return_reason ='Fake A' THEN 1
+        WHEN si.return_reason ='Fake C' THEN 1
+        WHEN si.return_reason ='Fake Product' THEN 1
+        WHEN si.return_reason ='Guarantee issue / wrong details base on our site' THEN 1
+        WHEN si.return_reason ='Internal - wrong item' THEN 1
+        WHEN si.return_reason ='Lost in Shipment' THEN 1
+        WHEN si.return_reason ='Merchant - Defective' THEN 1
+        WHEN si.return_reason ='merchant - wrong item' THEN 1
+        WHEN si.return_reason ='Merchant-Not complete product' THEN 1
+        WHEN si.return_reason ='Poor quality of the product' THEN 1
+        WHEN si.return_reason ='wrong color' THEN 1
+        WHEN si.return_reason ='Wrong product information' THEN 1
+        ELSE 0 END AS 'is_bad_return_reason'
+
+  ,CASE  WHEN si.cancel_reason ='cancellation - unable to send via 3PL/own-rider' THEN 1
+        WHEN si.cancel_reason ='Customer - Late fulfillment' THEN 1
+        WHEN si.cancel_reason ='Customer - Some items were out of stock' THEN 1
+        WHEN si.cancel_reason ='Customer - Wrong product information' THEN 1
+        WHEN si.cancel_reason ='Internal-Defective' THEN 1
+        WHEN si.cancel_reason ='Internal-Error' THEN 1
+        WHEN si.cancel_reason ='Late Fulfilment by Seller' THEN 1
+        WHEN si.cancel_reason ='Lost in Warehouse' THEN 1
+        WHEN si.cancel_reason ='Merchant - Defective' THEN 1
+        WHEN si.cancel_reason ='Merchant - Order replacement' THEN 1
+        WHEN si.cancel_reason ='Merchant - Out of stock' THEN 1
+        WHEN si.cancel_reason ='Merchant - Price was wrong (Bamilo mistake)' THEN 1
+        WHEN si.cancel_reason ='Merchant - Price was wrong (Merchant mistake)' THEN 1
+        WHEN si.cancel_reason ='Merchant-Late Fulfilment' THEN 1
+        WHEN si.cancel_reason ='Merchant-Wrong' THEN 1
+        WHEN si.cancel_reason ='Out of stock(Cancellation - Internal)' THEN 1
+        WHEN si.cancel_reason ='Price Was wrong-Merchant' THEN 1
+        WHEN si.cancel_reason ='SC/Bob Error' THEN 1
+        ELSE 0 END AS 'is_bad_cancel_reason'
+
+
+  FROM StagingDB_Replica.Gathering.tblSalesOrder so
+
+  LEFT JOIN StagingDB_Replica.Gathering.tblSalesItem si
+  ON        so.id_sales_order = si.fk_sales_order
+  
+ WHERE si.finance_verified_at IS NOT NULL) il
+
+  GROUP BY il.customer_id
+  ) g_il
+
+
+  LEFT JOIN (
+
+      SELECT 
+  loss.customer_id
+  ,loss.last_order_status
+  FROM (
+
+  SELECT so.customer_id
+          ,MAX(so.status) AS 'last_order_status'
+          ,ROW_NUMBER() OVER(PARTITION BY so.customer_id
+                                 ORDER BY so.created_at  DESC) AS rk
+
+      FROM StagingDB_Replica.Gathering.tblSalesOrder so
+      LEFT JOIN StagingDB_Replica.Gathering.tblSalesItem si
+      ON        so.id_sales_order = si.fk_sales_order
+      WHERE si.finance_verified_at IS NOT NULL
+
+  GROUP BY 
+  so.customer_id
+  ,so.created_at
+
+  ) loss
+
+ WHERE loss.rk = 1
+  
+  ) los
+
+ ON g_il.customer_id = los.customer_id
+
+
+LEFT JOIN (
+
+  SELECT 
+  lcrr.customer_id
+  ,lcrr.last_cancel_reason
+  ,lcrr.last_cancel_date
+  FROM (
+
+  SELECT so.customer_id
+          ,MAX(si.cancel_reason) AS 'last_cancel_reason'
+          ,si.canceled_at AS  'last_cancel_date'
+          ,ROW_NUMBER() OVER(PARTITION BY so.customer_id
+                                 ORDER BY si.canceled_at  DESC) AS rk
+
+      FROM StagingDB_Replica.Gathering.tblSalesOrder so
+      LEFT JOIN StagingDB_Replica.Gathering.tblSalesItem si
+      ON        so.id_sales_order = si.fk_sales_order
+      WHERE si.finance_verified_at IS NOT NULL
+
+  GROUP BY 
+  so.customer_id
+  ,si.canceled_at
+
+  ) lcrr
+
+ WHERE lcrr.rk = 1  
+  
+  )  lcdr
+
+  ON g_il.customer_id = lcdr.customer_id
+
+
+  LEFT JOIN (
+
+  SELECT 
+  lrrr.customer_id
+  ,lrrr.last_return_reason
+  ,lrrr.last_return_date
+  FROM (
+
+  SELECT so.customer_id
+          ,MAX(si.return_reason) AS 'last_return_reason'
+          ,si.returned_at AS  'last_return_date'
+          ,ROW_NUMBER() OVER(PARTITION BY so.customer_id
+                                 ORDER BY si.returned_at  DESC) AS rk
+
+      FROM StagingDB_Replica.Gathering.tblSalesOrder so
+      LEFT JOIN StagingDB_Replica.Gathering.tblSalesItem si
+      ON        so.id_sales_order = si.fk_sales_order
+      WHERE si.finance_verified_at IS NOT NULL
+
+  GROUP BY 
+  so.customer_id
+  ,si.returned_at
+
+  ) lrrr
+
+ WHERE lrrr.rk = 1
+
+  ) lrdr
+
+ON g_il.customer_id = lrdr.customer_id
+
+  
+LEFT JOIN (
+
+  SELECT 
+   lbcrr.customer_id
+  ,lbcrr.last_bad_cancel_reason
+  ,lbcrr.last_bad_cancel_date
+
+  FROM (
+
+  SELECT 
+
+     inter_1.customer_id
+    ,MAX(CASE WHEN inter_1.bad_cancel_date IS NOT NULL THEN inter_1.cancel_reason ELSE NULL END) AS 'last_bad_cancel_reason'
+    ,inter_1.bad_cancel_date AS 'last_bad_cancel_date'
+    ,ROW_NUMBER() OVER(PARTITION BY inter_1.customer_id
+                                 ORDER BY inter_1.bad_cancel_date  DESC) AS rk
+    FROM (
+    
+
+    SELECT so.customer_id
+          ,si.cancel_reason AS 'cancel_reason'
+          ,CASE  WHEN si.cancel_reason ='cancellation - unable to send via 3PL/own-rider' THEN si.canceled_at
+        WHEN si.cancel_reason ='Customer - Late fulfillment' THEN si.canceled_at
+        WHEN si.cancel_reason ='Customer - Some items were out of stock' THEN si.canceled_at
+        WHEN si.cancel_reason ='Customer - Wrong product information' THEN si.canceled_at
+        WHEN si.cancel_reason ='Internal-Defective' THEN si.canceled_at
+        WHEN si.cancel_reason ='Internal-Error' THEN si.canceled_at
+        WHEN si.cancel_reason ='Late Fulfilment by Seller' THEN si.canceled_at
+        WHEN si.cancel_reason ='Lost in Warehouse' THEN si.canceled_at
+        WHEN si.cancel_reason ='Merchant - Defective' THEN si.canceled_at
+        WHEN si.cancel_reason ='Merchant - Order replacement' THEN si.canceled_at
+        WHEN si.cancel_reason ='Merchant - Out of stock' THEN si.canceled_at
+        WHEN si.cancel_reason ='Merchant - Price was wrong (Bamilo mistake)' THEN si.canceled_at
+        WHEN si.cancel_reason ='Merchant - Price was wrong (Merchant mistake)' THEN si.canceled_at
+        WHEN si.cancel_reason ='Merchant-Late Fulfilment' THEN si.canceled_at
+        WHEN si.cancel_reason ='Merchant-Wrong' THEN si.canceled_at
+        WHEN si.cancel_reason ='Out of stock(Cancellation - Internal)' THEN si.canceled_at
+        WHEN si.cancel_reason ='Price Was wrong-Merchant' THEN si.canceled_at
+        WHEN si.cancel_reason ='SC/Bob Error' THEN si.canceled_at
+        ELSE NULL END AS 'bad_cancel_date'
+         
+
+      FROM StagingDB_Replica.Gathering.tblSalesOrder so
+      LEFT JOIN StagingDB_Replica.Gathering.tblSalesItem si
+      ON        so.id_sales_order = si.fk_sales_order
+      WHERE si.finance_verified_at IS NOT NULL) inter_1
+
+  GROUP BY 
+  inter_1.customer_id
+  ,inter_1.bad_cancel_date
+
+  ) lbcrr
+
+WHERE rk = 1
+
+  ) lbcrd
+
+  ON g_il.customer_id = lbcrd.customer_id
+
+
+LEFT JOIN (
+
+   SELECT 
+   lbrrr.customer_id
+  ,lbrrr.last_bad_return_reason
+  ,lbrrr.last_bad_return_date
+
+  FROM (
+
+  SELECT 
+
+     inter_2.customer_id
+    ,MAX(CASE WHEN inter_2.bad_return_date IS NOT NULL THEN inter_2.return_reason ELSE NULL END) AS 'last_bad_return_reason'
+    ,inter_2.bad_return_date AS 'last_bad_return_date'
+    ,ROW_NUMBER() OVER(PARTITION BY inter_2.customer_id
+                                 ORDER BY inter_2.bad_return_date  DESC) AS rk
+    FROM (
+    
+
+    SELECT so.customer_id
+          ,si.return_reason AS 'return_reason'
+          ,CASE WHEN si.return_reason ='content issue' THEN si.returned_at
+        WHEN si.return_reason ='Damaged item' THEN si.returned_at
+        WHEN si.return_reason ='Expiring date' THEN si.returned_at
+        WHEN si.return_reason ='Fake A' THEN si.returned_at
+        WHEN si.return_reason ='Fake C' THEN si.returned_at
+        WHEN si.return_reason ='Fake Product' THEN si.returned_at
+        WHEN si.return_reason ='Guarantee issue / wrong details base on our site' THEN si.returned_at
+        WHEN si.return_reason ='Internal - wrong item' THEN si.returned_at
+        WHEN si.return_reason ='Lost in Shipment' THEN si.returned_at
+        WHEN si.return_reason ='Merchant - Defective' THEN si.returned_at
+        WHEN si.return_reason ='merchant - wrong item' THEN si.returned_at
+        WHEN si.return_reason ='Merchant-Not complete product' THEN si.returned_at
+        WHEN si.return_reason ='Poor quality of the product' THEN si.returned_at
+        WHEN si.return_reason ='wrong color' THEN si.returned_at
+        WHEN si.return_reason ='Wrong product information' THEN si.returned_at
+        ELSE NULL END AS 'bad_return_date'
+         
+
+      FROM StagingDB_Replica.Gathering.tblSalesOrder so
+      LEFT JOIN StagingDB_Replica.Gathering.tblSalesItem si
+      ON        so.id_sales_order = si.fk_sales_order
+      WHERE si.finance_verified_at IS NOT NULL) inter_2
+
+  GROUP BY 
+  inter_2.customer_id
+  ,inter_2.bad_return_date
+
+  ) lbrrr
+
+WHERE lbrrr.rk = 1
+  ) lbrdr
+
+  ON g_il.customer_id = lbrdr.customer_id
+
+
+  LEFT JOIN (
+
+SELECT 
+  hodmo.customer_id
+  ,hodmo.hour_of_day_most_order
+  ,hodmo.order_count_hod_most_order
+  FROM (
+
+  SELECT so.customer_id
+          ,DATEPART(HOUR,so.created_at) AS 'hour_of_day_most_order'
+          ,COUNT( DISTINCT so.order_nr) AS  'order_count_hod_most_order'
+          ,ROW_NUMBER() OVER(PARTITION BY so.customer_id
+                                 ORDER BY COUNT(DISTINCT so.order_nr) DESC) AS rk
+      FROM StagingDB_Replica.Gathering.tblSalesOrder so
+      LEFT JOIN StagingDB_Replica.Gathering.tblSalesItem si
+      ON        so.id_sales_order = si.fk_sales_order
+      WHERE si.finance_verified_at IS NOT NULL
+
+  GROUP BY 
+  so.customer_id
+  ,DATEPART(HOUR,so.created_at)
+
+  ) hodmo
+
+ WHERE hodmo.rk = 1
+
+
+  ) hod
+
+  ON g_il.customer_id = hod.customer_id
+
+
+  LEFT JOIN (
+
+
+  SELECT 
+  dowmo.customer_id
+  ,dowmo.day_of_week_most_order
+  ,dowmo.order_count_dow_most_order
+  FROM (
+
+  SELECT so.customer_id
+          ,DATEPART(dw,so.created_at) AS 'day_of_week_most_order'
+          ,COUNT(DISTINCT so.order_nr) AS  'order_count_dow_most_order'
+          ,ROW_NUMBER() OVER(PARTITION BY so.customer_id
+                                 ORDER BY COUNT(DISTINCT so.order_nr) DESC) AS rk
+      FROM StagingDB_Replica.Gathering.tblSalesOrder so
+      LEFT JOIN StagingDB_Replica.Gathering.tblSalesItem si
+      ON        so.id_sales_order = si.fk_sales_order
+      WHERE si.finance_verified_at IS NOT NULL
+
+  GROUP BY 
+  so.customer_id
+  ,DATEPART(dw,so.created_at)
+
+  ) dowmo
+
+ WHERE dowmo.rk = 1
+
+
+  ) dow
+
+  ON g_il.customer_id = dow.customer_id
+
+
+
+
+    LEFT JOIN (
+
+    SELECT 
+  dommo.customer_id
+  ,dommo.day_of_month_most_order
+  ,dommo.order_count_dom_most_order
+  FROM (
+
+  SELECT so.customer_id
+          ,DAY(so.created_at) AS 'day_of_month_most_order'
+          ,COUNT(DISTINCT so.order_nr) AS  'order_count_dom_most_order'
+          ,ROW_NUMBER() OVER(PARTITION BY so.customer_id
+                                 ORDER BY COUNT(DISTINCT so.order_nr) DESC) AS rk
+      FROM StagingDB_Replica.Gathering.tblSalesOrder so
+      LEFT JOIN StagingDB_Replica.Gathering.tblSalesItem si
+      ON        so.id_sales_order = si.fk_sales_order
+      WHERE si.finance_verified_at IS NOT NULL
+
+  GROUP BY 
+  so.customer_id
+  ,DAY(so.created_at)
+
+  ) dommo
+
+ WHERE dommo.rk = 1
+
+
+  ) dom
+
+  ON g_il.customer_id = dom.customer_id
+
+
+     LEFT JOIN (
+
+
+      SELECT 
+  moymo.customer_id
+  ,moymo.month_of_year_most_order
+  ,moymo.order_count_moy_most_order
+  FROM (
+
+  SELECT so.customer_id
+          ,DATEPART(month, so.created_at) AS 'month_of_year_most_order'
+          ,COUNT(DISTINCT so.order_nr) AS  'order_count_moy_most_order'
+          ,ROW_NUMBER() OVER(PARTITION BY so.customer_id
+                                 ORDER BY COUNT(DISTINCT so.order_nr) DESC) AS rk
+      FROM StagingDB_Replica.Gathering.tblSalesOrder so
+      LEFT JOIN StagingDB_Replica.Gathering.tblSalesItem si
+      ON        so.id_sales_order = si.fk_sales_order
+      WHERE si.finance_verified_at IS NOT NULL
+
+  GROUP BY 
+  so.customer_id
+  ,DATEPART(month, so.created_at)
+
+  ) moymo
+
+ WHERE moymo.rk = 1
+
+
+  ) moy
+
+  ON g_il.customer_id = moy.customer_id
+
+  LEFT JOIN (
+
+    SELECT 
+   lcii.customer_id
+  ,lcii.cluster_id
+
+  FROM (
+
+  SELECT  cccm.customer_id
+          ,MAX(cccm.cluster_id) 'cluster_id'
+          ,ROW_NUMBER() OVER(PARTITION BY cccm.customer_id
+                                 ORDER BY cccm.year_week DESC) AS rk
+      FROM UserDB.SarsharZandi.CustomerClustering_ClusterMapping cccm
+
+  GROUP BY 
+  cccm.customer_id
+  ,cccm.year_week
+
+  ) lcii
+
+ WHERE lcii.rk = 1
+  
+  
+  ) lci
+
+  ON lci.customer_id = g_il.customer_id
