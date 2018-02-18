@@ -9,10 +9,12 @@ const timestamp = require('console-timestamp');
 const promiseRetry = require('promise-retry');
 
 // weird stuff: for require "./" redirects to folder of etl.js BUT "fs.readFileSync" redirects to folder of etl_nodejs_launcher.bat!! >< Hence I both put them in same folder
+// EVEN WEIRDER, if I execute etl.js FROM R, it takes the same working directory as R for "fs.readFileSync"!!! >< 
+// hence ./nodejs/temp NOT ./temp because wd of R is emarsys_api NOT nodejs folder
 const config = require('./config.json');
 const user = config.user;
 const secret = config.secret;
-const json_to_feed = JSON.parse(fs.readFileSync('./temp/json_to_feed.txt', 'utf8'));
+const json_to_feed = JSON.parse(fs.readFileSync('./nodejs/temp/json_to_feed.txt', 'utf8'));
 
 function getWsseHeader(user, secret) {
   let nonce = crypto.randomBytes(16).toString('hex');
@@ -58,7 +60,7 @@ request.put({
       setTimeout(function() {
 
       // delete file named 'json_to_feed.txt' and handle errors
-      fs.unlink('./temp/json_to_feed.txt', function (err) {
+      fs.unlink('./nodejs/temp/json_to_feed.txt', function (err) {
         if (err) {
           console.log('Error deleting json_to_feed.txt: ',err);
           console.log('DD-MM-YY hh:mm:ss'.timestamp);

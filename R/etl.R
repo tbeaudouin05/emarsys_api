@@ -2,9 +2,11 @@ library(RODBC)
 library(rjson)
 library(yaml)
 
-Sys.time()
+source('R/function/run_query_wo_error_bi.R')
 
 # run sql query ---------------------------------------------------------------------------------
+
+start_t <- Sys.time()
 
 # fetch the text of the query 
 unformatted_query <- readLines('SQL/emarsys_query.txt')
@@ -13,21 +15,23 @@ unformatted_query <- readLines('SQL/emarsys_query.txt')
 # THERE SHOULD BE NO COMMENTS IN THE ORIGINAL QUERY!
 formatted_query <- gsub("\t","", paste(unformatted_query, collapse=" "))
 
-# create connection to BI database (ids should be in Yaml file)
-db_access <- yaml.load_file('access.yaml')
-conn <- odbcConnect("BI_replica", uid = db_access$bi_access[[1]][[1]], pwd = db_access$bi_access[[2]][[1]])
-
 # run the query on SQL Server database
-query_output <- sqlQuery(conn, formatted_query)
+query_output <- run_query_wo_error_bi_f(formatted_query)
 
-Sys.time()
 
 # feed api 1000 rows at a time ---------------------------------------------------------------------
 
 # initialize total_row with query output
 total_row <- query_output
+i <- 1
+
+start_t_loop <- Sys.time()
 
 while (nrow(total_row)>0) {
+  
+  nrow_processed <- i * 1000
+  writeLines(paste('Formatting rows in JSON to upload via Nodejs API. Time:',  Sys.time()))
+  writeLines(paste('Number of rows processed so far:',nrow_processed))
   
   # take top 1000 rows of total_row
   row_to_feed <- head(total_row,1000)
@@ -70,10 +74,21 @@ while (nrow(total_row)>0) {
   
   Sys.sleep(1)
   
+  writeLines(paste('Starting Nodejs process. Time:',Sys.time()))
+
   # run nodejs etl.js to upload rows to Emarsys
-  shell.exec('nodejs/etl_nodejs_launcher.bat')
+  shell.exec(paste0(getwd(),'/nodejs/etl_nodejs_launcher.bat'))
   
-  # wait until nodejs finished uploading JSON 
+  # wait until nodejs finishes uploading JSON 
+  # FYI: when nodejs finishes, it erases json_to_feed.txt
   while (file.exists('nodejs/temp/json_to_feed.txt')) {Sys.sleep(2)}
   
+  writeLines(paste('Nodejs process finished, starting another loop. Time:',Sys.time()))
+  
+  i <- i+1
 }
+
+end_t <- Sys.time()
+
+writeLines(paste('Total process time:',as.character(round(difftime(end_t,start_t,units = 'mins' ),digits = 0)),'minute(s)'))
+writeLines(paste('Loop process time:',as.character(round(difftime(end_t,start_t_loop,units = 'mins' ),digits = 0)),'minute(s)'))
