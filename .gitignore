@@ -2,3 +2,8 @@
 emarsys_cluster_id.Rproj
 main.R
 .Rproj.user/
+.RData
+temp/
+R/
+nodejs_log.txt
+access.yaml
