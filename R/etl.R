@@ -48,7 +48,7 @@ while (nrow(total_row)>0) {
   JSON_to_feed <- gsub('NA','null',JSON_to_feed)
   
   # save JSON to disk
-  writeLines(JSON_to_feed,'temp/json_to_feed.txt')
+  writeLines(JSON_to_feed,'nodejs/temp/json_to_feed.txt')
   
   # create flag_row_fed to flag rows already fed in total_row
   flag_row_fed <- data.frame('4819' = row_to_feed$`4819`
@@ -71,30 +71,9 @@ while (nrow(total_row)>0) {
   Sys.sleep(1)
   
   # run nodejs etl.js to upload rows to Emarsys
-  shell.exec('etl_nodejs_launcher.bat')
+  shell.exec('nodejs/etl_nodejs_launcher.bat')
   
-  # wait until nodejs finished uploading rows 
-  # NB: nodejs will erase temp/json_to_feed.txt once it is finished
-  # loop makes sure R does not crash in case nodejs is accessing json_to_feed.txt exactly at the same time when R is
-  i <- 1
-  start_time <- Sys.time()
-  while (i <- 1) {
-    
-    # wait 2 second NB: this time should be different from nodejs loop time! (nodejs = 1 second)
-    Sys.sleep(2)
-    # check if json_to_feed.txt still exists
-    file_exist_test <- tryCatch({
-    test <- file.exists('temp/json_to_feed.txt')
-    return(test)}
-             ,error = function(test){
-             test<- T
-             return(test)})
-    
-    # if nodejs has erased the file, then stop waiting and perform next loop
-    if (file_exist_test == F) { i <- 0 }
-    
-    # if the loop runs more than 10 times then stop the program
-    loop_minute_spent <- as.numeric(difftime(Sys.time(), start_time, units ="mins"))
-    if (loop_minute_spent > 10) { stop('ETL took more than 10 minutes to upload 1000 rows to Emarsys: program was stopped! ERROR!')}
-    }
+  # wait until nodejs finished uploading JSON 
+  while (file.exists('nodejs/temp/json_to_feed.txt')) {Sys.sleep(2)}
+  
 }
