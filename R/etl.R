@@ -51,6 +51,9 @@ while (nrow(total_row)>0) {
   # replace NA left by ''
   JSON_to_feed <- gsub('NA','null',JSON_to_feed)
   
+  # make sure temp folder exists otherwise create it
+  dir.create(file.path(getwd(), 'nodejs/temp'),showWarnings = FALSE)
+  
   # save JSON to disk
   writeLines(JSON_to_feed,'nodejs/temp/json_to_feed.txt')
   

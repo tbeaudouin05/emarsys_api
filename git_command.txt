@@ -1,3 +1,15 @@
+Connect to github
+1. If adding a second account
+Adding account with SSH key: https://help.github.com/articles/checking-for-existing-ssh-keys/
+Adding second account: https://code.tutsplus.com/tutorials/quick-tip-how-to-work-with-github-and-multiple-accounts--net-22574
+
+2. connect
+git config --global user.name "thomas-bamilo"
+git config --global user.email "thomas.beaudouin@bamilo.com"
+
+git config user.name "Mona Lisa"
+git config user.email "thomas.beaudouin@bamilo.com"
+------------------------------------------
 LINK FOLDER TO GITHUB REPOSITORY
 
 echo "# booking_app" >> README.md
@@ -20,4 +32,17 @@ git status: check what will be committed
 git commit -a : only commit modified and deleted files
 git commit -m "commit_name": commit all
 git push origin master : push commit to GitHub
+git config --get remote.origin.url: get current remote URL
+git remote set-url origin https://github.com/tbeaudouin05/emarsys_api.git: change remote URL
+
+
+---------------------------------
+CONTRIBUTE / FORK / PULL REQUEST
+1. Click on 'fork' in the repository you want to contribute to
+2. Clone the fork on my machine: git clone https://github.com/votre-username/name_of_repository_I_contribute_to
+2. Create new branch: git checkout -b new_branch_name
+3. Add your modification to the new folder "name_of_repository_I_contribute_to"
+4. Commit the modifications to the branch: git commit -m "modification_description" (first push gitignore)
+5. Push modifs to the BRANCH (not master): git push origin new_branch_name
+6. In the new fork, click on 'Compare and pull request'
 

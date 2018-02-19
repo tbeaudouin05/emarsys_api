@@ -25,23 +25,19 @@ run_query_wo_error_bi_f <- function(formatted_query){
   while (i == 1) {
     
     j <- j+1
-  # define fetch_row_f function
-  fetch_row_f <- function(conn1) {
-   output <- sqlQuery(conn1, formatted_query)
-  return(output)}
 
   writeLines('Running query and handling potential errors, please wait...')
   writeLines('FYI: query takes around 30 minutes')
   writeLines(paste('Start time of query:',Sys.time()))
   
-  query_output <- withCallingHandlers(fetch_row_f(conn),
+  query_output <- withCallingHandlers(sqlQuery(conn, formatted_query),
                                       warning = function(w){
                                         if(grepl("error while fetching rows", w$message)){
-                              
                                           writeLines('Error while fetching rows - fetching rows again...')
-                                        } else if (grepl("MySQL server has gone away", w$message)) {
-                                       
-                                          writeLines('MySQL server has gone away (on vacation?) - connecting again...')
+                                          
+                                        } else if (grepl("server has gone away", w$message)) {
+                                          writeLines('Server has gone away (on vacation?) - connecting again...')
+                                          
                                         } else {
                                           writeLines('All good on my side - moving on and retrieving data! :)')
                                     
@@ -54,7 +50,7 @@ if(is.data.frame(query_output)){i <- 2}
 # if the loop has failed more than 10 times then give up
 if(j > 10) {i <- 2}
   
-# close all open connections
+# close all open DB connections
 odbcCloseAll()
   
   }
